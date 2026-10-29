@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 16:9 launcher banner (320x180dp-ratio) drawn as a vector so no bitmap assets are needed. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <path android:fillColor="#FF101418" android:pathData="M0,0h320v180h-320z" />
+    <path android:fillColor="#FFE8C27A"
+        android:pathData="M160,48 L216,96 L204,96 L204,140 L176,140 L176,112 L144,112 L144,140 L116,140 L116,96 L104,96 Z" />
+</vector>

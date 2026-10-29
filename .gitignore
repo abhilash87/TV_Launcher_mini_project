@@ -1,0 +1,26 @@
+# Private wallpapers: do not commit personal images.
+/photos/
+/private/
+/tv-home-test/app/src/main/res/drawable-nodpi/
+/tv-home-test/app/src/debug/res/
+/tv-home-test/app/src/main/res/drawable/family_bg.png
+/tv-home-test/app/src/main/res/drawable/family_bg.jpg
+/tv-home-test/app/src/main/res/drawable/family_bg.jpeg
+/tv-home-test/app/src/main/res/drawable/family_bg.webp
+
+# Local configuration, credentials, and build output
+**/local.properties
+**/build/
+**/.gradle/
+**/.kotlin/
+/.build-tools/
+/.idea/
+*.iml
+*.apk
+*.aab
+*.jks
+*.keystore
+.env
+.env.*
+.DS_Store
+Thumbs.db

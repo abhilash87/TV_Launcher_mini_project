@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Deliberately minimal: only window-open events, only from Google TV's home package,
+     and no access to on-screen content. -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagDefault"
+    android:canRetrieveWindowContent="false"
+    android:description="@string/redirect_service_description"
+    android:notificationTimeout="0"
+    android:packageNames="com.google.android.apps.tv.launcherx" />

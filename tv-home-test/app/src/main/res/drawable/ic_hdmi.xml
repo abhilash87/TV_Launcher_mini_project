@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TV-with-input glyph for the HDMI 1 tile, sized to the 16:9 tile art area. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="160dp"
+    android:height="90dp"
+    android:viewportWidth="160"
+    android:viewportHeight="90">
+    <!-- screen -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFECEFF2"
+        android:strokeWidth="4"
+        android:pathData="M52,18h56a4,4 0,0 1,4 4v34a4,4 0,0 1,-4 4h-56a4,4 0,0 1,-4 -4v-34a4,4 0,0 1,4 -4z" />
+    <!-- stand -->
+    <path android:fillColor="#FFECEFF2" android:pathData="M68,64h24v4h-24z" />
+    <!-- input arrow -->
+    <path
+        android:fillColor="#FFE8C27A"
+        android:pathData="M64,37h20v-7l12,9 -12,9v-7h-20z" />
+</vector>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Home Test</string>
+    <string name="tile_set_home">Set as Home…</string>
+    <string name="tile_hdmi1">HDMI 1</string>
+    <string name="tile_google_tv">Google TV</string>
+    <string name="status_is_home">This app is the current Home app</string>
+    <string name="status_not_home">Running as a normal app (Google TV is still Home)</string>
+    <string name="status_redirect_off">Home button still opens Google TV. Turn on \"Home Test redirect\" in Settings → Accessibility.</string>
+    <string name="redirect_service_label">Home Test redirect</string>
+    <string name="redirect_service_description">Opens your Home Test screen when you turn on the TV and whenever Google TV\'s home screen appears, such as when you press Home. It only receives events from Google TV\'s home screen and cannot read what is on screen.</string>
+    <string name="role_unavailable">Home role is not available on this device</string>
+    <string name="launch_failed">Could not open %1$s</string>
+</resources>

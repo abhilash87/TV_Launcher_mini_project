@@ -6,6 +6,13 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Outline
 import android.graphics.drawable.Drawable
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.wifi.WifiInfo
+import android.net.wifi.WifiManager
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
 import android.os.Bundle
 import android.text.TextUtils
 import android.util.TypedValue
@@ -35,6 +42,16 @@ class HomeActivity : Activity() {
 
     private lateinit var row: LinearLayout
     private lateinit var status: TextView
+    private lateinit var wifiButton: View
+    private lateinit var settingsButton: View
+    private lateinit var wifiSignal: WifiSignalView
+    private val networkHandler = Handler(Looper.getMainLooper())
+    private val networkRefresh = object : Runnable {
+        override fun run() {
+            updateNetworkStatus()
+            networkHandler.postDelayed(this, 5_000L)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,6 +60,16 @@ class HomeActivity : Activity() {
         // Jump straight to the focused tile instead of smooth-scrolling the row.
         (row.parent as HorizontalScrollView).isSmoothScrollingEnabled = false
         status = findViewById(R.id.status)
+        wifiButton = findViewById(R.id.wifi_button)
+        settingsButton = findViewById(R.id.settings_button)
+        wifiSignal = findViewById(R.id.wifi_signal)
+        wifiButton.setOnClickListener {
+            val intent = Intent(Settings.ACTION_WIFI_SETTINGS)
+            startSafely(if (intent.resolveActivity(packageManager) != null) intent else Intent(Settings.ACTION_SETTINGS), getString(R.string.wifi_settings))
+        }
+        settingsButton.setOnClickListener {
+            startSafely(Intent(Settings.ACTION_SETTINGS), getString(R.string.tv_settings))
+        }
     }
 
     override fun onResume() {
@@ -51,6 +78,36 @@ class HomeActivity : Activity() {
         // without registering any broadcast receivers.
         updateStatus()
         buildTiles()
+        networkHandler.removeCallbacks(networkRefresh)
+        networkHandler.post(networkRefresh)
+    }
+
+    override fun onPause() {
+        networkHandler.removeCallbacks(networkRefresh)
+        super.onPause()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun updateNetworkStatus() {
+        val cm = getSystemService(ConnectivityManager::class.java)
+        val active = cm?.activeNetwork?.let { cm.getNetworkCapabilities(it) }
+        val ethernet = active?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true
+        // A VPN may be the default network while Wi-Fi remains the underlying link.
+        val wifi = if (ethernet) null else if (active?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true) active
+            else cm?.allNetworks?.mapNotNull { cm.getNetworkCapabilities(it) }
+                ?.firstOrNull { it.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) }
+        val connected = wifi != null
+        val info = wifi?.transportInfo as? WifiInfo
+            ?: if (connected) runCatching { applicationContext.getSystemService(WifiManager::class.java)?.connectionInfo }.getOrNull() else null
+        val rssi = info?.rssi
+        val level = if (connected && rssi != null && rssi in -126..-1) WifiManager.calculateSignalLevel(rssi, 4) + 1 else 0
+        wifiSignal.update(connected, ethernet, level)
+        wifiButton.contentDescription = when {
+            ethernet -> getString(R.string.ethernet_connected)
+            connected && level > 0 -> getString(R.string.wifi_strength, level)
+            connected -> getString(R.string.wifi_connected)
+            else -> getString(R.string.wifi_disconnected)
+        }
     }
 
     private fun roleManager(): RoleManager? = getSystemService(RoleManager::class.java)
@@ -58,7 +115,7 @@ class HomeActivity : Activity() {
     private fun isHome(): Boolean = roleManager()?.isRoleHeld(RoleManager.ROLE_HOME) == true
 
     private fun updateStatus() {
-        // Keep the weighted view in the layout so the clock stays right-aligned.
+        // Preserve the header spacing while hiding setup text after activation.
         // Setup guidance is only needed until this launcher becomes the Home app.
         if (isHome()) {
             status.text = ""
@@ -93,7 +150,14 @@ class HomeActivity : Activity() {
         }
 
         // Focus the first installed app, preferring YouTube.
-        row.getChildAt(0)?.requestFocus()
+        val firstTile = row.getChildAt(0)
+        if (firstTile != null) {
+            wifiButton.nextFocusDownId = firstTile.id
+            settingsButton.nextFocusDownId = firstTile.id
+            firstTile.requestFocus()
+        } else {
+            wifiButton.requestFocus()
+        }
     }
 
     /**
@@ -104,6 +168,8 @@ class HomeActivity : Activity() {
         val disc = dp(96)
         val artSize = if (fillDisc) disc - dp(12) else disc - dp(36)
         val tile = LinearLayout(this).apply {
+            id = View.generateViewId()
+            nextFocusUpId = R.id.wifi_button
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             isFocusable = true

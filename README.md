@@ -1,12 +1,12 @@
 # Minimal Family TV Launcher
 
-A lightweight Android TV / Google TV launcher with a clock, wallpaper, and three remote-friendly app tiles: **YouTube, Netflix, and TiviMate**. No HDMI shortcuts. Setup status text disappears once the app is selected as Home.
+A lightweight Android TV / Google TV launcher with a top-left clock, top-right Wi-Fi strength indicator and Settings shortcut, wallpaper, and three remote-friendly app tiles: **YouTube, Netflix, and TiviMate**. No HDMI shortcuts. Setup status text disappears once the app is selected as Home.
 
 Based on [badrikris/android-tv-launcher](https://github.com/badrikris/android-tv-launcher), upstream revision `ed931a9d32689da898db1ff1e08b0bd27e9c9ab9`. The upstream repository did not include a code license when this copy was prepared; this copy does not add a new license or grant additional rights.
 
 ## What is included
 
-This repository ships with a neutral gradient background. No family photos, original upstream artwork, personal screenshots, APKs, signing keys, or local SDK paths are included. The app appears on the TV as **Home Test**. Version: 0.2.
+This repository ships with a neutral gradient background. No family photos, original upstream artwork, personal screenshots, APKs, signing keys, or local SDK paths are included. The app appears on the TV as **Home Test**. Version: 0.3.
 
 ## Build requirements
 
@@ -81,3 +81,14 @@ Home-button redirection targets `com.google.android.apps.tv.launcherx.home.HomeA
 To undo: turn off Home Test redirect and uninstall Home Test. No root or system-app disabling is needed.
 
 Debug APK updates must use the same signing key. A different computer's debug key may require uninstalling the old build before installing the new one.
+
+## Version 0.3
+
+- Clock at the top left; Wi-Fi indicator and Settings shortcut at the top right.
+- Wi-Fi signal refreshes every five seconds while the launcher is visible; disconnected and Ethernet states are supported.
+- Select the Wi-Fi icon to open network settings; select the gear to open TV settings. Use Up from an app tile to reach the header and Down to return.
+- Uses normal ACCESS_NETWORK_STATE and ACCESS_WIFI_STATE permissions. No location permission or Wi-Fi scanning is requested.
+- Home status text remains hidden once the app is selected as Home.
+- Public APKs use the neutral background. Personal wallpaper APKs should stay private.
+
+Download the latest public APK from this repository's GitHub Releases page. Install it over an earlier build only when its signing certificate matches; otherwise uninstall the older build first.

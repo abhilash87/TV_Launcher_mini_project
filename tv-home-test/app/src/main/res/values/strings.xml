@@ -11,4 +11,10 @@
     <string name="redirect_service_description">Opens your Home Test screen when you turn on the TV and whenever Google TV\'s home screen appears, such as when you press Home. It only receives events from Google TV\'s home screen and cannot read what is on screen.</string>
     <string name="role_unavailable">Home role is not available on this device</string>
     <string name="launch_failed">Could not open %1$s</string>
+    <string name="tv_settings">TV settings</string>
+    <string name="wifi_settings">Wi-Fi settings</string>
+    <string name="wifi_strength">Wi-Fi connected, signal %1$d of 4. Open network settings.</string>
+    <string name="wifi_connected">Wi-Fi connected. Signal strength unavailable. Open network settings.</string>
+    <string name="wifi_disconnected">Wi-Fi disconnected. Open network settings.</string>
+    <string name="ethernet_connected">Ethernet connected. Open network settings.</string>
 </resources>

@@ -11,8 +11,8 @@ android {
         applicationId = "dev.homescreen.test"
         minSdk = 31 // Android 12, matches the TCL TV
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2"
+        versionCode = 3
+        versionName = "0.3"
     }
 
     buildTypes {

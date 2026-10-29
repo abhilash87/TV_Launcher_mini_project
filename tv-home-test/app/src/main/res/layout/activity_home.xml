@@ -18,6 +18,12 @@
         android:layout_gravity="bottom"
         android:background="@drawable/bottom_scrim" />
 
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="100dp"
+        android:layout_gravity="top"
+        android:background="@drawable/top_scrim" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -28,14 +34,6 @@
         android:paddingTop="20dp"
         android:paddingEnd="48dp">
 
-        <TextView
-            android:id="@+id/status"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textColor="@color/text_dim"
-            android:textSize="13sp" />
-
         <TextClock
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -45,6 +43,47 @@
             android:shadowRadius="8"
             android:textColor="@color/text"
             android:textSize="40sp" />
+
+        <TextView
+            android:id="@+id/status"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp"
+            android:maxLines="2"
+            android:textColor="@color/text_dim"
+            android:textSize="13sp" />
+
+        <FrameLayout
+            android:id="@+id/wifi_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="12dp"
+            android:background="@drawable/tile_bg"
+            android:contentDescription="@string/wifi_settings"
+            android:focusable="true"
+            android:clickable="true"
+            android:nextFocusRight="@id/settings_button">
+            <dev.homescreen.test.WifiSignalView
+                android:id="@+id/wifi_signal"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_gravity="center"
+                android:importantForAccessibility="no" />
+        </FrameLayout>
+
+        <ImageButton
+            android:id="@+id/settings_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/tile_bg"
+            android:contentDescription="@string/tv_settings"
+            android:focusable="true"
+            android:clickable="true"
+            android:nextFocusLeft="@id/wifi_button"
+            android:padding="12dp"
+            android:src="@drawable/ic_settings" />
     </LinearLayout>
 
     <HorizontalScrollView

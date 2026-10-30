@@ -1,6 +1,7 @@
 package dev.homescreen.test
 
 import android.accessibilityservice.AccessibilityService
+import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -8,94 +9,118 @@ import android.content.IntentFilter
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import android.os.SystemClock
+import android.provider.Settings
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 
-/**
- * Brings this launcher to the front when:
- *  - Google TV's home activity opens (Home button), since this TV always resolves HOME to
- *    Google TV's privileged launcher even when this app holds the HOME role;
- *  - the TV is switched on (screen on), since the TV otherwise resumes its last input (HDMI 1);
- *  - the TV has just cold-booted and this service connects for the first time.
- *
- * It receives accessibility events from the Google TV launcher package only (see
- * home_redirect_service.xml) and cannot read window content.
- */
+/** Optional, user-enabled Home redirect. No screen content is retrieved. */
+@Suppress("DEPRECATION")
 class HomeRedirectService : AccessibilityService() {
-
     private val handler = Handler(Looper.getMainLooper())
-    private var lastRedirectAt = 0L
+    private val policy = HomeRedirectPolicy()
+    private var receiverRegistered = false
+    private var bootCount = -1
+    private val preferences by lazy { getSharedPreferences("launcher_startup", Context.MODE_PRIVATE) }
 
-    private val showLauncher = Runnable { bringLauncherToFront("power on") }
+    private val redirectHome = Runnable { bringLauncherToFront("Google TV home opened") }
+    private val showAfterWake = Runnable { bringLauncherToFront("startup or screen on") }
 
-    private val screenOnReceiver = object : BroadcastReceiver() {
+    private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            if (intent.action != Intent.ACTION_SCREEN_ON) return
-            // Let the TV finish restoring its last input first, then cover it with the launcher.
-            handler.removeCallbacks(showLauncher)
-            handler.postDelayed(showLauncher, POWER_ON_DELAY_MS)
+            when (intent.action) {
+                Intent.ACTION_SCREEN_ON -> scheduleWakeLaunch()
+                Intent.ACTION_SCREEN_OFF -> cancelPendingLaunches()
+                Intent.ACTION_CLOSE_SYSTEM_DIALOGS -> {
+                    if (intent.getStringExtra("reason") == "homekey") {
+                        handler.removeCallbacks(redirectHome)
+                        val delay = policy.homeKey(SystemClock.uptimeMillis())
+                        handler.postDelayed(redirectHome, delay)
+                        Log.d(TAG, "Home key; redirect scheduled after burst")
+                    }
+                }
+            }
         }
     }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        val filter = IntentFilter(Intent.ACTION_SCREEN_ON)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(screenOnReceiver, filter, Context.RECEIVER_EXPORTED)
-        } else {
-            registerReceiver(screenOnReceiver, filter)
+        if (!receiverRegistered) {
+            val filter = IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_ON)
+                addAction(Intent.ACTION_SCREEN_OFF)
+                // System-sent Home-key broadcasts also occur when no window state changes.
+                addAction(Intent.ACTION_CLOSE_SYSTEM_DIALOGS)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(screenReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                registerLegacySystemReceiver(filter)
+            }
+            receiverRegistered = true
         }
-        // Accessibility services are started during boot; if that is why we are connecting,
-        // treat it like a power-on. A later reconnect (e.g. after an app update) does nothing.
-        if (SystemClock.elapsedRealtime() < BOOT_WINDOW_MS) {
-            handler.postDelayed(showLauncher, POWER_ON_DELAY_MS)
-        }
+        bootCount = Settings.Global.getInt(contentResolver, Settings.Global.BOOT_COUNT, -1)
+        val handledBoot = preferences.getInt("handled_boot_count", -1)
+        // Works even if Android starts this service more than three minutes after boot.
+        // Ordinary same-boot reconnects do not interrupt the app being watched.
+        if (HomeRedirectPolicy.needsBootLaunch(bootCount, handledBoot)) scheduleWakeLaunch()
     }
 
+    // API 31-32 have no RECEIVER_NOT_EXPORTED flag. Restrict senders to holders
+    // of this signature permission instead; Android itself holds it.
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
+    private fun registerLegacySystemReceiver(filter: IntentFilter) {
+        registerReceiver(screenReceiver, filter, "android.permission.BROADCAST_CLOSE_SYSTEM_DIALOGS", handler)
+    }
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        if (event.packageName?.toString() != GOOGLE_TV_PACKAGE) return
         if (event.className?.toString() != GOOGLE_TV_HOME_CLASS) return
+        val delay = policy.request(SystemClock.uptimeMillis()) ?: return
+        // Keep one trailing request rather than dropping Home presses during a cooldown.
+        handler.postDelayed(redirectHome, delay)
+    }
 
-        // The user picked the Google TV tile. Google TV fires more than one window event while it
-        // opens, so the pass covers the whole window rather than just the first event.
-        if (SystemClock.uptimeMillis() < allowGoogleTvUntil) return
-        bringLauncherToFront("Google TV home opened")
+    private fun scheduleWakeLaunch() {
+        handler.removeCallbacks(showAfterWake)
+        handler.postDelayed(showAfterWake, POWER_ON_DELAY_MS)
+    }
+
+    private fun cancelPendingLaunches() {
+        handler.removeCallbacks(redirectHome)
+        handler.removeCallbacks(showAfterWake)
+        policy.cancel()
     }
 
     private fun bringLauncherToFront(reason: String) {
-        val now = SystemClock.uptimeMillis()
-        if (now - lastRedirectAt < DEBOUNCE_MS) return
-        lastRedirectAt = now
-
-        Log.d(TAG, "$reason; showing custom launcher")
-        startActivity(
-            Intent(this, HomeActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT),
-        )
+        cancelPendingLaunches()
+        if (getSystemService(PowerManager::class.java)?.isInteractive != true) return
+        try {
+            startActivity(Intent(this, HomeActivity::class.java).addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT,
+            ))
+            policy.launched(SystemClock.uptimeMillis())
+            if (bootCount >= 0) preferences.edit().putInt("handled_boot_count", bootCount).apply()
+            Log.d(TAG, "$reason; requested custom launcher")
+        } catch (error: SecurityException) {
+            Log.w(TAG, "System denied launcher redirect", error)
+        }
     }
 
     override fun onInterrupt() = Unit
 
     override fun onDestroy() {
-        handler.removeCallbacksAndMessages(null)
-        runCatching { unregisterReceiver(screenOnReceiver) }
+        cancelPendingLaunches()
+        if (receiverRegistered) runCatching { unregisterReceiver(screenReceiver) }
+        receiverRegistered = false
         super.onDestroy()
     }
 
-    companion object {
-        private const val TAG = "HomeRedirect"
-        private const val DEBOUNCE_MS = 1_000L
-        private const val POWER_ON_DELAY_MS = 1_500L
-        private const val BOOT_WINDOW_MS = 3 * 60_000L
-        private const val GOOGLE_TV_HOME_CLASS = "com.google.android.apps.tv.launcherx.home.HomeActivity"
-
-        /** Set by the Google TV tile so Google TV home opening in the next few seconds is not redirected. */
-        @Volatile
-        var allowGoogleTvUntil = 0L
-
-        fun allowGoogleTvOnce() {
-            allowGoogleTvUntil = SystemClock.uptimeMillis() + 5_000L
-        }
+    private companion object {
+        const val TAG = "HomeRedirect"
+        const val POWER_ON_DELAY_MS = 1_500L
+        const val GOOGLE_TV_PACKAGE = "com.google.android.apps.tv.launcherx"
+        const val GOOGLE_TV_HOME_CLASS = "com.google.android.apps.tv.launcherx.home.HomeActivity"
     }
 }

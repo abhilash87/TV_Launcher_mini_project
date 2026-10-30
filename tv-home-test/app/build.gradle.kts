@@ -11,8 +11,8 @@ android {
         applicationId = "dev.homescreen.test"
         minSdk = 31 // Android 12, matches the TCL TV
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3"
+        versionCode = 5
+        versionName = "0.5"
     }
 
     buildTypes {
@@ -32,3 +32,6 @@ android {
 
 // Intentionally no AndroidX/library dependencies: pure framework APIs keep the
 // APK tiny and memory use low on the ~1.9 GB TV.
+
+// Unit-test dependency only; the launcher still has no runtime library dependencies.
+dependencies { testImplementation("junit:junit:4.13.2") }

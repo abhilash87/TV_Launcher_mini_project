@@ -6,7 +6,7 @@ Based on [badrikris/android-tv-launcher](https://github.com/badrikris/android-tv
 
 ## What is included
 
-This repository ships with a neutral gradient background. No family photos, original upstream artwork, personal screenshots, APKs, signing keys, or local SDK paths are included. The app appears on the TV as **Home Test**. Version: 0.3.
+This repository ships with a neutral gradient background. No family photos, original upstream artwork, personal screenshots, APKs, signing keys, or local SDK paths are included. The app appears on the TV as **Home Test**. Version: 0.5.
 
 ## Build requirements
 
@@ -25,10 +25,10 @@ Or build directly:
 
 ```powershell
 cd tv-home-test
-.\gradlew.bat assembleDebug lintDebug
+.\gradlew.bat assembleDebug lintDebug testDebugUnitTest
 ```
 
-macOS/Linux: `cd tv-home-test`, then `chmod +x gradlew` and `./gradlew assembleDebug lintDebug`.
+macOS/Linux: `cd tv-home-test`, then `chmod +x gradlew` and `./gradlew assembleDebug lintDebug testDebugUnitTest`.
 
 APK output: `tv-home-test/app/build/outputs/apk/debug/app-debug.apk`.
 
@@ -74,7 +74,7 @@ adb -s TV_IP:5555 install -r tv-home-test/app/build/outputs/apk/debug/app-debug.
 
 Replace `TV_IP` with your TV address and accept the authorization prompt on the TV. Some firmware uses a different network debugging setup.
 
-Open **Home Test**, check the tiles, then choose **Set as Home** and confirm in Android's dialog. If the Home button still opens Google TV, enable **Home Test redirect** in the TV's Accessibility settings. This optional service only receives Google TV launcher window events; it cannot retrieve screen content. A brief Google TV flash may occur.
+Open **Home Test**, check the tiles, then choose **Set as Home** and confirm in Android's dialog. If the Home button still opens Google TV, enable **Home Test redirect** in the TV's Accessibility settings. This optional service receives Google TV launcher window events and system Home-key/screen-power broadcasts; it cannot retrieve screen content. A brief Google TV flash may occur.
 
 Home-button redirection targets `com.google.android.apps.tv.launcherx.home.HomeActivity`. It may need changes on other firmware. The screensaver is unchanged.
 
@@ -92,3 +92,40 @@ Debug APK updates must use the same signing key. A different computer's debug ke
 - Public APKs use the neutral background. Personal wallpaper APKs should stay private.
 
 Download the latest public APK from this repository's GitHub Releases page. Install it over an earlier build only when its signing certificate matches; otherwise uninstall the older build first.
+## Version 0.5: repeated Home presses and startup
+
+Rapid repeated Home presses can return to Google TV without producing another window-state event. V0.5 also listens for system Home-key broadcasts and schedules the redirect 350 ms after the most recent press. Its startup handling tracks the current system boot count instead of relying on a three-minute boot window. Screen-off cancels pending launches, and ordinary same-boot service reconnects do not interrupt playback.
+
+This Home-key broadcast behavior was verified on a TCL Smart TV Pro running Android 14; it is firmware-dependent. Under extreme continuous input, Google TV can remain visible for a few seconds before the launcher recovers. V0.5 does not guarantee an instantaneous transition or identical behavior on every TV.
+
+### TCL auto-start permission
+
+On the tested TCL firmware, the service could be listed as enabled while TCL blocked it from binding after startup. The launcher-specific `AUTO_START` operation was `ignore`. Check your TV before applying any command:
+
+```text
+adb shell cmd appops get dev.homescreen.test AUTO_START
+```
+
+If this operation exists and is blocked, allow auto-start for this launcher only and persist the setting:
+
+```text
+adb shell cmd appops set dev.homescreen.test AUTO_START allow
+adb shell cmd appops write-settings
+```
+
+These are vendor-specific commands. If the operation is unknown, use the TV's per-app auto-launch settings or consult its firmware documentation; do not blindly alter other app permissions or disable system packages.
+
+After updating the APK, toggle **Home Test redirect** off and on in the TV's Accessibility settings if it is listed as enabled but not running. Keep Home Test selected as the Home app. Some TCL firmware may still route Home to Google TV despite that role; the redirect handles that case.
+
+For predictable startup on compatible TCL models, set **Settings > System > Power & Energy > Power On Behavior > Google TV Home Screen** rather than restoring an HDMI input. A brief Google TV screen can appear before Android starts the redirect.
+
+### Verification
+
+- `assembleDebug`, `lintDebug`, all 11 regression tests, and APK signature verification passed for both the private device build and the neutral-background public build.
+- V0.5 was installed and tested on a TCL Smart TV Pro: repeated six-key bursts, 120 presses across twenty bursts, and sixty continuous Home events with bounded recovery.
+- Settings and YouTube stayed open normally after the stress test. The final device run passed all 11 checks.
+- An initial sixty-event check caught Google TV during a delayed transition. Repeated observations confirmed recovery by a later check around four seconds. The final run preserved the first observation and recovery delay rather than treating it as instantaneous.
+- Home events were injected through ADB. Users should also verify their physical remote.
+- Startup after OS restart and standby/remote wake were verified with the v0.4 startup implementation retained in v0.5. Physical unplug/replug was not performed.
+
+The public release contains only the neutral background. Your photos, private APKs, signing keys, and local device connection information are not part of this repository.
